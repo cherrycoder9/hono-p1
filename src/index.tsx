@@ -1,10 +1,53 @@
 // src/index.tsx
 import { Hono } from 'hono';
 
+// strict mode - 경로 구분 여부 설정
+// 기본값은 strict: true 이고 다음을 다르게 취급한다
+// /hello
+// /hello/
+// strict: false로 설정하면 두개를 동일 경로로 취급 
 const app = new Hono();
+// const app = new Hono({ strict: false});
+
+// router 옵션 - 라우터 구현체 선택
+// 기본값은 SmartRouter, 원하면 변경 가능
+// import { RegExpRouter } from 'hono/router/reg-exp-router';
+// const app = new Hono({
+//   router: new RegExpRouter()
+// });
+
 
 // app.get('/', (c) => {
 //   return c.text('Hello Hono!');
+// });
+
+
+// Generics - 타입안전한 환경변수와 컨텍스트 변수 설정
+// Hono는 제네릭을 통해 env, c.set(), c.get()에 들어가는 값들의 타입을 미리 지정가능
+// type Bindings = {
+//   TOKEN: string;
+// };
+
+// type User = {
+//   age: number;
+//   name: string;
+// };
+
+// type Variables = {
+//   user: User;
+// };
+
+// const app = new Hono<{
+//   Bindings: Bindings;
+//   Variables: Variables;
+// }>();
+
+// const user: User = { age: 34, name: "hi" };
+
+// app.use('/auth/*', async (c, next) => {
+//   const token = c.env.TOKEN; // 타입: string
+//   c.set("user", user);
+//   await next();
 // });
 
 // json 응답 반환 
@@ -137,6 +180,67 @@ app.onError((err, c) => {
   return c.text('Custom Error Message', 500);
 });
 
+// 커스텀 HTTP 메서드 라우팅
+// 일반적이지 않은 HTTP 메서드도 라우팅 가능함 
+app.on('PURGE', '/cache', (c) => c.text('PURGE Method /cache'));
 
+// 여러 메서드 동시 처리
+app.on(['PUT', 'DELETE'], '/post', (c) =>
+  c.text('PUT or DELETE /post')
+);
+
+// 여러 경로를 한번에 처리
+// 다국어 URL 같은 경우 유용 
+app.on('GET', ['/hello', '/ja/hello', '/en/hello'], (c) =>
+  c.text('Hello')
+);
+
+// 모든 파라미터 한번에 받기
+app.get('/posts/:id/comment/:comment_id', (c) => {
+  const { id, comment_id } = c.req.param();
+  return c.text(`id: ${id}, comment_id: ${comment_id}`);
+});
+
+// 선택적 파라미터 
+// ?가 붙으면 해당 파라미터는 생략 가능 
+// /api/animal 및 /api/animal/dog 둘다 매칭됨
+app.get('/api/animal/:type?', (c) => c.text('Animal!'));
+
+// RegExp, 정규표현식 기반 라우팅
+// 숫자와 영문 조건 라우팅 
+app.get('/post/:date{[0-9]+}/:title{[a-z]+}', (c) => {
+  // /post/20240507/hello 매칭됨
+  // /post/abcd/hello 매칭 안됨 
+  const { date, title } = c.req.param();
+  return c.text(`date: ${date}, title: ${title}`);
+});
+
+// 슬래시 포함 파일명 매칭 
+// .+는 슬래시 포함까지 커버하는 패턴
+app.get("/image/:filename{.+\\.png}", (c) => {
+  // /image/test.png 매칭됨 filename: test.png
+  // /image/a/image.png 슬래시 포함된 경로도 매칭됨 filename: a/test.png
+  // .png로 끝나는 어떤 경로든 매칭한다는 의미 
+  const filename = c.req.param('filename');
+  return c.text(`filename: ${filename}`);
+});
+
+// 체이닝된 라우트
+// 하나의 엔드포인트에서 여러 메서드를 체이닝 형태로 선언 가능
+// /endpoint 경로에서 메서드별로 다른 동작 처리 
+app
+  .get('/endpoint', (c) => c.text('GET /endpoint'))
+  .post((c) => c.text('POST /endpoint'))
+  .delete((c) => c.text('DELETE /endpoint'));
+
+// 라우트 그룹화 
+// const book = new Hono();
+
+// book.get('/', (c) => c.text('List Books'));
+// book.get('/:id', (c) => c.text('Get Book: ' + c.req.param('id')));
+// book.post('/', (c) => c.text('Create Book'));
+
+// const app = new Hono();
+// app.route('/book', book);
 
 export default app;
