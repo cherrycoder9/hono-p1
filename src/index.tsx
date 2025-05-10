@@ -243,4 +243,44 @@ app
 // const app = new Hono();
 // app.route('/book', book);
 
+// 베이스 경로는 냅두고 그룹핑하기
+// 기본 URL은 그대로 두고 여러 API 쪼개서 관리하고 싶을때 씀 
+// Hono 인스턴스 생성
+const book = new Hono();
+book.get('/book', (c) => c.text('책 목록')); // GET /book 요청 처리 
+book.post('/book', (c) => c.text('책 생성')); // POST /book 요청 처리
+
+// 또 다른 Hono 인스턴스, 얘는 기본 경로가 /user
+const user = new Hono().basePath('/user');
+user.get('/', (c) => c.text('사용자 목록')); // GET /user 요청 처리
+user.post('/', (c) => c.text('사용자 생성')); // POST /user 요청 처리 
+
+// 메인 앱에 위에서 만든 애들 등록
+// const app = new Hono();
+app.route('/', book); // /book으로 시작하는 요청은 book이 처리
+app.route('/', user); // /user로 시작하는 요청은 user가 처리 
+
+// 호스트 이름으로 라우팅
+// 가끔 URL에 www1.example.com/hello 처럼 호스트 이름까지 다 들어있는 경우가 있는데 이것도 문제없이 처리 가능 
+// const app = new Hono({
+//   // 요청 URL에서 프로토콜이랑 쿼리 스트링 다 날리고 호스트+경로만 남기는 함수
+//   getPath: (req) => req.url.replace(/^https?:\/([^?]+).*$/, '$1'),
+// });
+
+app.get('/www1.example.com/hello', (c) => c.text('안녕 www1'));
+app.get('/www2.example.com/hello', (c) => c.text('안녕 www2'));
+
+// getPath 함수로 URL을 살짝 만져주면, 호스트 이름에 따라 다른 처리를 할 수 있음
+
+// Host 헤더 값으로 라우팅
+// const app = new Hono({
+//   getPath: (req) =>
+//     // Host 헤더 값이랑 URL 경로를 합쳐서 새로운 경로를 만들어냄
+//     '/' +
+//     req.headers.get('host') + // 예: www1.example.com
+//     req.url.replace(/^https:\/\/[^/]+(\/[^?]*).*/, '$1'), // 예: /hello
+// });
+
+app.get('/www1.example.com/hello', (c) => c.text('안녕 www1'));
+
 export default app;
