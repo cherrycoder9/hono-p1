@@ -283,4 +283,28 @@ app.get('/www2.example.com/hello', (c) => c.text('안녕 www2'));
 
 app.get('/www1.example.com/hello', (c) => c.text('안녕 www1'));
 
+// 라우팅 우선순위
+// Hono에서는 핸들러나 미들웨어를 등록한 순서대로 실행
+app.get('/book/a', (c) => c.text('a')); // 1번선수
+app.get('/book/:slug', (c) => c.text('공통')); // 2번선수
+// GET /book/a 요청이 오면? -> 'a'가 응답 
+// GET /book/b 요청이 오면? -> '공통'이 응답 
+
+// 미들웨어는 핸들러보다 앞에 두라 
+// 만약 모든 요청에 공통적으로 뭔가를 하고 싶다(로그남기기 같은거), 그러면 해당 미들웨어를 핸들러보다 앞에 써야함
+app.use(logger()); // 로그 남기는 미들웨어
+app.get('/foo', (c) => c.text('foo')); // 핸들러
+// 반대로하면 핸들러가 다 처리하고 나서 로그 찍으려 하기 때문에 의미없음
+
+// 특정 경로 다 처리하고 그래도 아무도 못잡는 요청이 있으면 그때 처리할 비상용 핸들러느 맨 뒤에 둬야함 
+app.get('/bar', (c) => c.text('bar'));
+app.get('*', (c) => c.text('비상용'));// 그룹핑 순서
+// 라우트를 여러개 묶어서 관리할때 묶는 순서가 꼬이면 찾기 힘든 버그 생길수 있음
+// app.route() 함수는 두 번째 인자로 받은 라우팅 정보를 가져와서 자기 자신의 라우팅 테이블에 추가하는 방식임
+// 제대로 된 순서 
+three.get('/hi', (c) => c.text('hi')); // 3단계 라우트 정의
+two.route('/three', three); // 2단계에 3단계 라우트 연결 
+app.route('/two', two); // 최상위에 2단계 라우트 연결 
+// GET /two/three/hi 요청 -> 'hi' 응답 
+
 export default app;
